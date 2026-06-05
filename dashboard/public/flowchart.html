@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KG Pipeline — Kent Seevers FLSC</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0d14;
+    --surface:   #111520;
+    --border:    #1e2a3a;
+    --blue:      #3b82f6;
+    --orange:    #f97316;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --gray:      #64748b;
+    --amber:     #f59e0b;
+    --teal:      #14b8a6;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --glow-blue: rgba(59,130,246,0.15);
+    --glow-orange: rgba(249,115,22,0.15);
+    --glow-green: rgba(34,197,94,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .title-block {}
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--orange);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    line-height: 1;
+  }
+  h1 span { color: var(--orange); }
+
+  .meta {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Main grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto auto;
+    gap: 24px;
+  }
+
+  /* ── Panels ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .panel-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .panel-icon {
+    font-size: 15px;
+  }
+  .panel-body {
+    padding: 20px;
+  }
+
+  /* ── Mermaid container ── */
+  .mermaid-wrap {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+  .mermaid-wrap .panel-body {
+    padding: 24px 20px;
+    overflow-x: auto;
+  }
+  .mermaid {
+    min-width: 800px;
+  }
+
+  /* ── Sidebar panels ── */
+  .sidebar {
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Tools list ── */
+  .tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tool-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: border-color 0.2s;
+  }
+  .tool-item:hover { border-color: var(--blue); }
+  .tool-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--blue);
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 130px;
+  }
+  .tool-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ── Status definitions ── */
+  .status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .status-item {
+    padding: 10px 12px;
+    background: var(--bg);
+    border-left: 3px solid var(--border);
+    border-radius: 0 6px 6px 0;
+  }
+  .status-item.blue  { border-color: var(--blue); }
+  .status-item.orange{ border-color: var(--orange); }
+  .status-item.green { border-color: var(--green); }
+  .status-item.gray  { border-color: var(--gray); }
+  .status-item.red   { border-color: var(--red); }
+  .status-name {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .status-item.blue  .status-name { color: var(--blue); }
+  .status-item.orange .status-name { color: var(--orange); }
+  .status-item.green .status-name { color: var(--green); }
+  .status-item.gray  .status-name { color: var(--gray); }
+  .status-item.red   .status-name { color: var(--red); }
+  .status-def {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── Automation strip ── */
+  .auto-strip {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .auto-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.25);
+    color: var(--blue);
+    white-space: nowrap;
+  }
+  .auto-badge.orange {
+    background: rgba(249,115,22,0.08);
+    border-color: rgba(249,115,22,0.25);
+    color: var(--orange);
+  }
+  .auto-badge.green {
+    background: rgba(34,197,94,0.08);
+    border-color: rgba(34,197,94,0.25);
+    color: var(--green);
+  }
+  .auto-badge.teal {
+    background: rgba(20,184,166,0.08);
+    border-color: rgba(20,184,166,0.25);
+    color: var(--teal);
+  }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="title-block">
+      <div class="eyebrow">Kitchen Guard Nebraska · FLSC Operations</div>
+      <h1>KG Pipeline <span>/ Kent Seevers</span></h1>
+    </div>
+    <div class="meta">
+      <div>NFPA 96 · Commercial Hood Cleaning</div>
+      <div>Powered by Atomo · CT103</div>
+      <div id="date-stamp"></div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Active Pipeline</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> Inspection Stage</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Proposal Stage</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Close Won</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--gray)"></div> Close Cold</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Close Lost / DNC</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div> Daily Workflow</div>
+    <div style="margin-left:auto" class="auto-badge">AUTO</div>
+    <div style="font-size:12px;color:var(--muted);align-self:center">= fully automated by Atomo</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Main flowchart -->
+    <div class="panel mermaid-wrap">
+      <div class="panel-header">
+        <span class="panel-icon">🔀</span>
+        <h2>End-to-End Pipeline Flow</h2>
+      </div>
+      <div class="panel-body">
+        <div class="mermaid">
+%%{init: {
+  "theme": "dark",
+  "themeVariables": {
+    "background": "#111520",
+    "primaryColor": "#1e2d45",
+    "primaryTextColor": "#e2e8f0",
+    "primaryBorderColor": "#3b82f6",
+    "lineColor": "#475569",
+    "secondaryColor": "#1a2535",
+    "tertiaryColor": "#0a0d14",
+    "edgeLabelBackground": "#111520",
+    "clusterBkg": "#0f1825",
+    "clusterBorder": "#1e3a5f",
+    "titleColor": "#e2e8f0",
+    "nodeBorder": "#334155",
+    "mainBkg": "#1e2d45"
+  }
+}}%%
+flowchart TD
+    subgraph SRC["LEAD SOURCES"]
+        direction LR
+        CSS["📧 CSS / ServiceMinder\nTimetap ICS → outlook-watcher\n🤖 AUTO-INGESTED"]
+        WEB["🌐 WebForm / Cohesive\noutlook-watcher reply\n🤖 AUTO-INGESTED"]
+        MAN["🧊 Cold / Manual\nZoomInfo · Directories\nDirect entry"]
+    end
+
+    PJ[("⚙️ prospects.json\nSOURCE OF TRUTH")]
+
+    CSS -->|parse-css.js| PJ
+    WEB -->|parse-webform.js| PJ
+    MAN --> PJ
+
+    PJ --> NL
+
+    subgraph PIPE["SALES PIPELINE"]
+        direction LR
+        NL["🆕 New Lead"] --> CON["📞 Contacted"]
+        CON --> IS["📅 Inspection\nScheduled"]
+        IS --> IC["✅ Inspection\nComplete"]
+        IC --> PS["📄 Proposal\nDelivered"]
+        PS --> PM["🤝 Proposal\nMeeting"]
+    end
+
+    subgraph INSP["INSPECTION LOGISTICS"]
+        direction TB
+        TRIP["/inspection-trip\nHome → Shop → Site\n🗺️ Live traffic timing"]
+        CC["CompanyCam\nCondensed Inspection\nhoods · fans · filters\ncadence · hours · key\nparking · water"]
+    end
+
+    IS -.->|plan the trip| TRIP
+    TRIP -.->|on-site| CC
+    CC -.->|data saved| IC
+
+    PM --> CW["🏆 Close Won"]
+    PM --> CCOLD["🧊 Close Cold"]
+    PM --> CLOST["❌ Close Lost"]
+
+    subgraph WON["CLOSE WON FLOW"]
+        direction TB
+        CW --> CWFLOW["/close-won\nConfirm details\nUpdate PJ"]
+        CWFLOW --> SM["ServiceMinder CSV\ngenerated"]
+        CWFLOW --> HO["/handoff\nTeams → Kyra\nScheduling chat"]
+        CWFLOW --> GR["Google Review\nOutreach draft"]
+        HO --> ACC{"Access Info\nreceived?"}
+        ACC -->|"🔁 daily PR reminder\n+ next_step rolls fwd"| PREFETCH
+        ACC -->|"✅ got it"| SVC["🎉 First Service\nScheduled"]
+    end
+
+    CCOLD --> RE["Re-engage someday\nslow-burn outreach"]
+    RE -.->|"future cycle"| PJ
+
+    CLOST --> DNC{"DNC\nflag?"}
+    DNC -->|"yes"| OFF["⛔ Off the list\ndo_not_contact: true"]
+    DNC -->|"no"| RE
+
+    subgraph DAILY["DAILY WORKFLOW LOOP  ·  runs every weekday"]
+        direction LR
+        PREFETCH["⏰ 6am Prefetch\nSales Tracker\nEmails · Review Cards"]
+        PREFETCH --> TRIAGE["/triage\n30 min · snap decisions\none action per card"]
+        TRIAGE --> TFILE["📋 Triage File\nJSON snapshot"]
+        TFILE --> EXEC["/execute\ncalls · emails · Teams\nbumps · closes · CW"]
+        EXEC -->|"writes immediately"| PJ
+    end
+
+    PJ -.->|"pre-warms"| PREFETCH
+
+    style SRC fill:#0f1825,stroke:#1e3a5f,color:#94a3b8
+    style PIPE fill:#0d1929,stroke:#1e3a5f,color:#94a3b8
+    style INSP fill:#1a1506,stroke:#3d2e06,color:#94a3b8
+    style WON fill:#061910,stroke:#0d3320,color:#94a3b8
+    style DAILY fill:#080f1a,stroke:#0f2444,color:#94a3b8
+
+    style CSS fill:#1e2d45,stroke:#3b82f6,color:#93c5fd
+    style WEB fill:#1e2d45,stroke:#3b82f6,color:#93c5fd
+    style MAN fill:#1e2535,stroke:#334155,color:#94a3b8
+    style PJ fill:#1e2535,stroke:#475569,color:#cbd5e1
+
+    style NL fill:#1e2d45,stroke:#3b82f6,color:#93c5fd
+    style CON fill:#1e2d45,stroke:#3b82f6,color:#93c5fd
+    style IS fill:#2a1f05,stroke:#f97316,color:#fdba74
+    style IC fill:#2a1f05,stroke:#f97316,color:#fdba74
+    style PS fill:#211b05,stroke:#f59e0b,color:#fcd34d
+    style PM fill:#211b05,stroke:#f59e0b,color:#fcd34d
+
+    style TRIP fill:#2a1f05,stroke:#f97316,color:#fdba74
+    style CC fill:#2a1f05,stroke:#f97316,color:#fdba74
+
+    style CW fill:#062010,stroke:#22c55e,color:#86efac
+    style CWFLOW fill:#062010,stroke:#22c55e,color:#86efac
+    style SM fill:#062010,stroke:#22c55e,color:#86efac
+    style HO fill:#062010,stroke:#22c55e,color:#86efac
+    style GR fill:#062010,stroke:#22c55e,color:#86efac
+    style ACC fill:#062010,stroke:#22c55e,color:#86efac
+    style SVC fill:#062010,stroke:#22c55e,color:#86efac
+
+    style CCOLD fill:#1c1c1c,stroke:#64748b,color:#94a3b8
+    style RE fill:#1c1c1c,stroke:#64748b,color:#94a3b8
+    style CLOST fill:#200a0a,stroke:#ef4444,color:#fca5a5
+    style DNC fill:#200a0a,stroke:#ef4444,color:#fca5a5
+    style OFF fill:#200a0a,stroke:#ef4444,color:#fca5a5
+
+    style PREFETCH fill:#062020,stroke:#14b8a6,color:#5eead4
+    style TRIAGE fill:#062020,stroke:#14b8a6,color:#5eead4
+    style TFILE fill:#062020,stroke:#14b8a6,color:#5eead4
+    style EXEC fill:#062020,stroke:#14b8a6,color:#5eead4
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Atomo Skills -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">⚡</span>
+          <h2>Atomo Skills</h2>
+        </div>
+        <div class="panel-body">
+          <div class="tool-list">
+            <div class="tool-item">
+              <div class="tool-name">/triage</div>
+              <div class="tool-desc">30-min snap decisions on all overdue cards. No writes — planning only.</div>
+            </div>
+            <div class="tool-item">
+              <div class="tool-name">/execute</div>
+              <div class="tool-desc">Works through triage file. Writes PJ after each card. Calls, emails, closes, bumps.</div>
+            </div>
+            <div class="tool-item">
+              <div class="tool-name">/pipeline-review</div>
+              <div class="tool-desc">Full card loop. Pre-warmed at 6am. Starts in &lt; 5 seconds.</div>
+            </div>
+            <div class="tool-item">
+              <div class="tool-name">/close-won</div>
+              <div class="tool-desc">Deal confirm → SM CSV → /handoff → Google Review. Full ops handoff.</div>
+            </div>
+            <div class="tool-item">
+              <div class="tool-name">/handoff</div>
+              <div class="tool-desc">Pulls CC inspection data → Teams → Scheduling Hand Off Notifications chat.</div>
+            </div>
+            <div class="tool-item">
+              <div class="tool-name">/inspection-trip</div>
+              <div class="tool-desc">Home → Shop → Site. Live traffic. Leave-home time + calendar reminder.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Automation -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">🤖</span>
+          <h2>Automation</h2>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:6px">CSS Lead Ingest</div>
+            <div class="auto-strip">
+              <span class="auto-badge">outlook-watcher</span>
+              <span class="auto-badge">parse-css.js</span>
+              <span class="auto-badge">Calendar event</span>
+              <span class="auto-badge">Telegram alert</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--orange);margin-bottom:6px">6am Prefetch</div>
+            <div class="auto-strip">
+              <span class="auto-badge orange">Sales Tracker DL</span>
+              <span class="auto-badge orange">Email cache</span>
+              <span class="auto-badge orange">Review cards</span>
+              <span class="auto-badge orange">Session-ready</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">CompanyCam Pull</div>
+            <div class="auto-strip">
+              <span class="auto-badge green">Cadence</span>
+              <span class="auto-badge green">Hours in/out</span>
+              <span class="auto-badge green">Parking</span>
+              <span class="auto-badge green">Water</span>
+              <span class="auto-badge green">Key on file</span>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:6px">SharePoint Sync</div>
+            <div class="auto-strip">
+              <span class="auto-badge teal">Nightly 11pm</span>
+              <span class="auto-badge teal">pipeline-writeback.py</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Definitions -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">📊</span>
+          <h2>Status Definitions</h2>
+        </div>
+        <div class="panel-body">
+          <div class="status-list">
+            <div class="status-item blue">
+              <div class="status-name">Active</div>
+              <div class="status-def">Working, Contacted, Inspection stages, Proposal stages — in the review queue.</div>
+            </div>
+            <div class="status-item green">
+              <div class="status-name">Closed Won</div>
+              <div class="status-def">Signed. Ops handoff initiated. Scheduling pending or confirmed.</div>
+            </div>
+            <div class="status-item gray">
+              <div class="status-name">Cold</div>
+              <div class="status-def">Door not shut. No response, not ready, went elsewhere. Re-engage someday.</div>
+            </div>
+            <div class="status-item red">
+              <div class="status-name">Closed Lost</div>
+              <div class="status-def">Permanently off the list. Bad fit, business closed, or actively unwanted.</div>
+            </div>
+            <div class="status-item red">
+              <div class="status-name">⛔ DNC Flag</div>
+              <div class="status-def">do_not_contact: true. Any status. Always shows warning. Requires confirmation for any outreach.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar -->
+  </div><!-- /grid -->
+
+  <footer>
+    Atomo · CT103 (192.168.1.103) · KG Dashboard :3100 · prospects.json → SharePoint nightly · built 2026-06-04
+  </footer>
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    flowchart: {
+      useMaxWidth: false,
+      htmlLabels: true,
+      curve: 'basis',
+      rankSpacing: 60,
+      nodeSpacing: 40,
+      padding: 20
+    },
+    themeVariables: {
+      background:         '#111520',
+      primaryColor:       '#1e2d45',
+      primaryTextColor:   '#e2e8f0',
+      primaryBorderColor: '#3b82f6',
+      lineColor:          '#475569',
+      secondaryColor:     '#1a2535',
+      tertiaryColor:      '#0a0d14',
+      edgeLabelBackground:'#111520',
+      clusterBkg:         '#0f1825',
+      clusterBorder:      '#1e3a5f',
+      titleColor:         '#e2e8f0'
+    }
+  });
+
+  document.getElementById('date-stamp').textContent =
+    new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+</script>
+</body>
+</html>

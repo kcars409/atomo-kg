@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(crontab -l)",
+      "mcp__claude_ai_Microsoft_365__outlook_email_search",
+      "mcp__claude_ai_Microsoft_365__read_resource",
+      "mcp__claude_ai_Microsoft_365__outlook_calendar_search",
+      "mcp__claude_ai_Microsoft_365__chat_message_search",
+      "mcp__claude_ai_Microsoft_365__sharepoint_search",
+      "mcp__todoist__get_tasks_list",
+      "mcp__todoist__get_projects_list"
+    ]
+  }
+}

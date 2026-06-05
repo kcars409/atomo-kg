@@ -1,0 +1,46 @@
+# Dependencies
+dashboard/node_modules/
+kg-context/node_modules/
+
+# Sensitive data - never commit
+kg-context/prospects.json
+kg-context/prospects.json.bak*
+kg-context/kg-access-secrets.json
+kg-context/contacts.json
+kg-context/lead-rotation.json
+kg-context/todos.json
+
+# Runtime state
+kg-context/temp/
+kg-context/output/
+kg-context/data/
+kg-context/*.ics
+kg-context/.wwebjs_cache/
+
+# Bulk import / exported files
+kg-context/*.xlsx
+kg-context/*.csv
+kg-context/crm-holding.md
+
+# Logs
+*.log
+dashboard/*.log
+
+# Misc
+.DS_Store
+__pycache__/
+*.pyc
+*.bak
+
+# Claude local settings (may contain hardcoded tokens)
+kg-context/.claude/settings.local.json
+
+# Binary and sensitive assets
+kg-context/assets/*.xlsx
+kg-context/assets/*.csv
+kg-context/assets/*.vcf
+kg-context/assets/*.docx
+kg-context/assets/*.pdf
+
+# Sample email files
+kg-context/*.eml

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KG Pipeline</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand" data-view="dashboard" style="cursor:pointer">
+        <img src="kg-logo.png" class="brand-logo" alt="Kitchen Guard" onerror="this.style.display='none';document.querySelector('.brand-fallback').style.display='flex'">
+        <div class="brand-fallback" style="display:none;align-items:center;gap:10px">
+          <div class="brand-mark">KG</div>
+          <div class="brand-words">
+            <div class="brand-name">KITCHEN GUARD</div>
+            <div class="brand-sub">PIPELINE OPERATIONS</div>
+          </div>
+        </div>
+      </div>
+      <div class="hstats">
+        <div class="hstat"><span class="hstat-n" id="hstat-total">—</span><span class="hstat-l">TOTAL</span></div>
+        <span class="hsep"></span>
+        <div class="hstat hstat-red"><span class="hstat-n" id="hstat-overdue">—</span><span class="hstat-l">OVERDUE</span></div>
+        <span class="hsep"></span>
+        <div class="hstat hstat-amber"><span class="hstat-n" id="hstat-today">—</span><span class="hstat-l">TODAY</span></div>
+      </div>
+      <nav>
+        <button class="nbtn active" data-view="dashboard">DASHBOARD</button>
+        <button class="nbtn" data-view="review">PIPELINE REVIEW</button>
+        <button class="nbtn" data-view="prospects">PROSPECTS</button>
+        <button class="nbtn" data-view="routing">LEAD ROUTING</button>
+        <button class="nbtn" data-view="tasks">TASKS <span id="tasks-badge" class="tasks-badge"></span></button>
+      </nav>
+    </header>
+    <main id="main">
+      <div id="view-dashboard" class="view active"></div>
+      <div id="view-review" class="view"></div>
+      <div id="view-prospects" class="view"></div>
+      <div id="view-routing" class="view"></div>
+      <div id="view-tasks" class="view"></div>
+    </main>
+  </div>
+  <div id="toasts"></div>
+  <div id="modal-overlay" class="modal-overlay hidden"><div id="modal-box" class="modal-box"><div id="modal-content"></div></div></div>
+  <script src="app.js"></script>
+</body>
+</html>
