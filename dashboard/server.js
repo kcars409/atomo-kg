@@ -25,6 +25,7 @@ const SCHEDULING_CHECKLIST = [
   'Do we need to confirm dates prior to each cleaning, or can we schedule and simply let you know when we are coming?',
   'Is there an alarm code?',
   'Any special notes for this location?',
+  'Send Google Review outreach after first cleaning',
 ];
 
 function newId() {
@@ -143,6 +144,7 @@ app.get('/api/stats', (req, res) => {
   const byStatus = {};
   let overdue = 0, dueToday = 0;
   for (const p of prospects) {
+    if (!isKentsProspect(p)) continue;
     byStatus[p.status] = (byStatus[p.status] || 0) + 1;
     if (ACTIVE_STATUSES.includes(p.status)) {
       if (p.next_step_date && p.next_step_date < today) overdue++;
@@ -389,9 +391,27 @@ app.post('/api/prospects/:name/meeting/complete', (req, res) => {
     prospects[idx].atomo_notes = existing + `[${today}] ${notePrefix} (${outcome}): ${notes}\n`;
   }
   if (newStatus) prospects[idx].status = newStatus;
+  if (type === 'inspection' && outcome === 'completed') {
+    prospects[idx].inspection_complete = true;
+    prospects[idx].inspection_completed_at = new Date().toISOString();
+  }
   prospects[idx].last_activity_date = today;
   prospects[idx].last_updated       = new Date().toISOString();
   writeProspects(prospects);
+
+  // Pull CompanyCam data when inspection is confirmed complete
+  if (type === 'inspection' && outcome === 'completed') {
+    try {
+      const ccRaw = execSync('node /home/kent/scripts/kg-cc-inspection.js ' + JSON.stringify(name), { encoding: 'utf8', timeout: 30000 });
+      const ccJson = ccRaw.slice(ccRaw.indexOf('\n{') + 1);
+      const ccData = JSON.parse(ccJson);
+      if (ccData.found) {
+        const fresh = readProspects();
+        const i = fresh.findIndex(p => p.name === name);
+        if (i >= 0) { fresh[i].companycam_data = ccData; fresh[i].last_updated = new Date().toISOString(); writeProspects(fresh); }
+      }
+    } catch (_) {}
+  }
 
   // Queue status changes for SharePoint nightly sync
   if (newStatus) {
@@ -412,6 +432,46 @@ app.post('/api/prospects/:name/meeting/complete', (req, res) => {
   }
 
   res.json({ success: true, new_status: newStatus });
+});
+
+// ── Mark inspection complete (no prior meeting object required) ───────────
+app.post('/api/prospects/:name/inspection/complete', (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name);
+    const prospects = readProspects();
+    const idx = prospects.findIndex(p => p.name === name || (p.company || '').toLowerCase() === name.toLowerCase());
+    if (idx === -1) return res.status(404).json({ error: 'Prospect not found' });
+
+    const now = new Date().toISOString();
+    prospects[idx].inspection_complete = true;
+    prospects[idx].inspection_completed_at = now;
+    prospects[idx].status = 'Inspection Complete';
+    if (prospects[idx].inspection_meeting && !prospects[idx].inspection_meeting.completed_at) {
+      prospects[idx].inspection_meeting.completed_at = now;
+      prospects[idx].inspection_meeting.outcome = 'completed';
+    }
+    prospects[idx].last_activity_date = todayYmd();
+    prospects[idx].last_updated = now;
+    writeProspects(prospects);
+
+    let ccResult = null;
+    try {
+      const ccRaw2 = execSync('node /home/kent/scripts/kg-cc-inspection.js ' + JSON.stringify(name), { encoding: 'utf8', timeout: 30000 });
+      const ccData = JSON.parse(ccRaw2.slice(ccRaw2.indexOf('\n{') + 1));
+      if (ccData.found) {
+        const fresh = readProspects();
+        const i = fresh.findIndex(p => p.name === name || (p.company || '').toLowerCase() === name.toLowerCase());
+        if (i >= 0) { fresh[i].companycam_data = ccData; fresh[i].last_updated = new Date().toISOString(); writeProspects(fresh); }
+        ccResult = { found: true, project: ccData.project_name };
+      } else {
+        ccResult = { found: false, reason: ccData.reason };
+      }
+    } catch (_) {}
+
+    res.json({ ok: true, inspection_complete: true, companycam: ccResult });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── Lead rotation ──────────────────────────────────────────────────────────

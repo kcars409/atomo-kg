@@ -124,7 +124,7 @@ MEETING FOLLOW-UP - [Company Name]
 
 **Inspection:**
 - Ask: "Did it complete? (y / noshow / no)"
-- `y` → "Notes?" → buffer: status=Inspection Complete, append to atomo_notes, set `inspection_meeting.completed_at`=now, `inspection_meeting.outcome`="completed"
+- `y` → "Notes?" → buffer: status=Inspection Complete, inspection_complete=true, append to atomo_notes, set `inspection_meeting.completed_at`=now, `inspection_meeting.outcome`="completed"
   - **CSS note prompt (only if `lead_source === 'CSS'`):** "CSS note for this inspection? (type it or 'skip')"
     - Write changes first, then call:
       ```bash

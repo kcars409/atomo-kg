@@ -109,18 +109,16 @@ async function kgReply({ messageId, body, cc, replyAll = false, attachments = []
   const fromAddr = (msg.from?.emailAddress?.address || '').toLowerCase();
 
   if (fromAddr === KG_FROM.toLowerCase()) {
-    // Sent item: prospect never replied. Build a draft with proper RFC threading
-    // headers (In-Reply-To + References) so it threads in the prospect's inbox.
+    // Sent item: prospect never replied. Graph's createMessage endpoint rejects
+    // In-Reply-To/References as internetMessageHeaders (must be x-prefixed), so
+    // true RFC threading isn't possible here. Send as a new message with a
+    // "Re:" subject to the same recipient(s) instead.
     const subject = msg.subject.startsWith('Re:') ? msg.subject : 'Re: ' + msg.subject;
 
     const draftPayload = {
       subject,
       body: { contentType: 'HTML', content: signedBody },
       toRecipients: msg.toRecipients,
-      internetMessageHeaders: [
-        { name: 'In-Reply-To', value: msg.internetMessageId },
-        { name: 'References', value: msg.internetMessageId }
-      ],
       attachments: formatAttachments(allAttachments)
     };
 
@@ -130,7 +128,7 @@ async function kgReply({ messageId, body, cc, replyAll = false, attachments = []
 
     const draft = await callGraphAPI(accessToken, 'POST', 'me/messages', draftPayload);
     await callGraphAPI(accessToken, 'POST', `me/messages/${draft.id}/send`, {});
-    return { content: [{ type: 'text', text: 'Reply sent in thread (threaded via sent item).' }] };
+    return { content: [{ type: 'text', text: 'Reply sent (new message, "Re:" subject - not threaded; sent item replies cannot use RFC threading headers via Graph).' }] };
   }
 
   // Received message: use the Graph reply endpoint (handles threading natively).

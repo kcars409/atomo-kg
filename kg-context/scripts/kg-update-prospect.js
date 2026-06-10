@@ -11,8 +11,10 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { spawnSync } = require('child_process');
 
 const PROSPECTS_PATH = path.join(__dirname, '..', 'prospects.json');
+const CC_SCRIPT = '/home/kent/scripts/kg-cc-inspection.js';
 
 async function main() {
   let input = '';
@@ -41,6 +43,7 @@ async function main() {
   const data = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
   const now = new Date().toISOString();
   const results = [];
+  const ccNames = [];
 
   for (const update of updates) {
     const { name, ...fields } = update;
@@ -58,12 +61,38 @@ async function main() {
 
     Object.assign(data[idx], fields, { last_updated: now });
     results.push(`UPDATED: ${data[idx].name}`);
+
+    if (fields.inspection_complete === true) ccNames.push(data[idx].name);
   }
 
   fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(data, null, 2));
 
   results.forEach(r => console.log(r));
   console.error(`\nkg-update-prospect: ${updates.length} updates attempted, ${results.filter(r => r.startsWith('UPDATED')).length} applied.`);
+
+  // CC pull for any prospect where inspection_complete was just set
+  for (const name of ccNames) {
+    console.log(`Pulling CompanyCam data for ${name}...`);
+    const cc = spawnSync('node', [CC_SCRIPT, name], { encoding: 'utf8', timeout: 30000 });
+    if (cc.error) { console.error(`CC error: ${cc.error.message}`); continue; }
+    try {
+      const ccData = JSON.parse(cc.stdout.slice(cc.stdout.indexOf('\n{') + 1));
+      if (!ccData.found) { console.log(`CC: ${ccData.reason || 'not found'}`); continue; }
+      const fresh = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+      const i = fresh.findIndex(p =>
+        (p.name || '').toLowerCase() === name.toLowerCase() ||
+        (p.company || '').toLowerCase() === name.toLowerCase()
+      );
+      if (i >= 0) {
+        fresh[i].companycam_data = ccData;
+        fresh[i].last_updated = new Date().toISOString();
+        fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(fresh, null, 2));
+        console.log(`CC data saved: ${ccData.project_name}`);
+      }
+    } catch (e) {
+      console.error(`CC parse error: ${e.message}`);
+    }
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

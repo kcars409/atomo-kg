@@ -16,17 +16,17 @@ import json, os
 from datetime import date
 today = date.today().isoformat()
 prospects = json.load(open(os.path.expanduser('~/contexts/KG/prospects.json')))
-touched = {p['name'] for p in prospects if p.get('last_activity_date') == today}
-print(json.dumps(list(touched)))
+done_today = {p['name'] for p in prospects if p.get('triage_done_today') == today}
+print(json.dumps(list(done_today)))
 "
 ```
 
-Store result as `touched_today`.
+Store result as `done_today`.
 
 Set `cards = cards_data.cards`.
-Filter to: `next_step_date <= today` AND `name not in touched_today`.
+Filter to: `next_step_date <= today` AND `name not in done_today`.
 
-If any were excluded, print: `({N} already touched today, skipped)`
+If any were excluded, print: `({N} already marked done in triage today, skipped)`
 
 Print:
 ```
@@ -49,7 +49,7 @@ TRIAGE - {date} | {N} cards | clock is running
 | `cw` | Close as Won — queues for /close-won flow in execute |
 | `bump` | Bump to tomorrow |
 | `bump 6/15` or any date | Bump to that date |
-| `d` | Already handled today — exclude silently |
+| `d` | Already handled today — writes `triage_done_today` flag, excludes from future triage runs today |
 | `skip` | Exclude from execute |
 | Free text | Use as triage note, then prompt: action? |
 
@@ -72,7 +72,13 @@ Next: {next_step}
 
 Wait for snap. Queue the action item. Print next card immediately.
 
-**No writes during this loop.**
+**One write exception:** when Kent types `d`, immediately write `triage_done_today` to the prospect record:
+
+```bash
+echo '[{"name":"COMPANY_NAME","triage_done_today":"YYYY-MM-DD"}]' | node ~/contexts/KG/scripts/kg-update-prospect.js
+```
+
+All other snaps are queued — no writes until /execute.
 
 ---
 

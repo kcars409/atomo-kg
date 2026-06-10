@@ -78,10 +78,6 @@ Run `/handoff PROSPECT_NAME` inline. The skill will pull CC data, use the confir
 
 Do not proceed past this step until the Teams message is confirmed sent.
 
-## Step 6 — Google Review Outreach
-
-Display the Google Review outreach template (A, B, or C from CLAUDE.md) pre-filled and ready to copy-paste. Ask Kent which channel (text or email).
-
-## Step 7 — Summary
+## Step 6 — Summary
 
 One line per action taken. Flag anything still needing manual follow-up.
