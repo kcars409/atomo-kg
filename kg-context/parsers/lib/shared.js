@@ -12,7 +12,9 @@ const SM_TEMPLATE_PATH = path.join(KG_DIR, 'serviceminder_upload_template.csv');
 const OUTPUT_DIR = path.join(KG_DIR, 'output');
 
 /*
- * prospects.json schema (each element):
+ * prospects.json on disk: { companies: [ { company_id, company, locations: [...] } ] }
+ * Each location object holds everything below except `company` (lives on the
+ * company node, re-derived by flatten()):
  *
  * SM fields (map to serviceminder_upload_template.csv):
  *   name, company, title, email, phone, alt_phone,
@@ -22,6 +24,7 @@ const OUTPUT_DIR = path.join(KG_DIR, 'output');
  *   first_name, last_name, notes, how_did_you_find_out, are_you_a_new_customer
  *
  * Atomo-specific:
+ *   location_id         — e.g. "spaghetti-works-1"
  *   lead_source_type    — CSS | WebForm | Cohesive | ColdCall | ...
  *   assigned_to         — Kent | Vincent
  *   rotation_override   — true if normal rotation was bypassed
@@ -31,16 +34,91 @@ const OUTPUT_DIR = path.join(KG_DIR, 'output');
  *   temperature         — Hot | Contacted - Responded | null
  *   atomo_notes         — free text
  *   last_updated        — ISO timestamp
+ *
+ * loadProspects()/saveProspects() below give every caller the flat,
+ * one-record-per-location array this file always had — see flatten()/nest().
  */
+
+// ── Schema: companies[] -> locations[] ────────────────────────────────────────
+
+function slugifyCompanyName(str) {
+  const base = (str || '')
+    .toLowerCase()
+    .replace(/['''`]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return base || 'company';
+}
+
+// Nested -> flat. Every location becomes its own record, with `company` and
+// `company_id` copied down from its parent company node.
+function flatten(nested) {
+  const out = [];
+  for (const co of (nested.companies || [])) {
+    for (const loc of (co.locations || [])) {
+      out.push({ ...loc, company: co.company, company_id: co.company_id });
+    }
+  }
+  return out;
+}
+
+// Flat -> nested. Groups by company_id (assigning fresh ids to records that
+// don't have one yet — new leads each become their own single-location
+// company by default). `company`/`company_id` are stripped from the location
+// object since they're re-derived by flatten() on the next load.
+function nest(flatArray) {
+  const companies = new Map();
+  const usedIds = new Set();
+  const usedLocationIds = new Set();
+
+  for (const rec of flatArray) {
+    const { company, company_id, location_id, ...rest } = rec;
+    let coId = company_id;
+    if (coId) {
+      usedIds.add(coId);
+      if (!companies.has(coId)) {
+        companies.set(coId, { company_id: coId, company: company || rest.name || '', locations: [] });
+      }
+    } else {
+      const base = slugifyCompanyName(company || rest.name);
+      coId = base;
+      let n = 2;
+      while (usedIds.has(coId)) { coId = `${base}-${n}`; n++; }
+      usedIds.add(coId);
+      companies.set(coId, { company_id: coId, company: company || rest.name || '', locations: [] });
+    }
+    const companyNode = companies.get(coId);
+    let locId = location_id;
+    if (!locId) {
+      let n = companyNode.locations.length + 1;
+      locId = `${coId}-${n}`;
+      while (usedLocationIds.has(locId)) { n++; locId = `${coId}-${n}`; }
+    } else if (usedLocationIds.has(locId)) {
+      // Pre-existing location_id collides (e.g. two records that slugify to
+      // the same id) - disambiguate rather than silently dropping a key.
+      let n = 2;
+      let candidate = `${locId}-${n}`;
+      while (usedLocationIds.has(candidate)) { n++; candidate = `${locId}-${n}`; }
+      locId = candidate;
+    }
+    usedLocationIds.add(locId);
+    companyNode.locations.push({ location_id: locId, ...rest });
+  }
+
+  return { companies: Array.from(companies.values()) };
+}
 
 // ── prospects.json ────────────────────────────────────────────────────────────
 
-function loadProspects() {
-  try { return JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8')); }
+function loadProspectsFlat() {
+  let raw;
+  try { raw = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8')); }
   catch { return []; }
+  if (Array.isArray(raw)) return raw; // pre-migration flat file
+  return flatten(raw);
 }
 
-function saveProspects(prospects) {
+function saveProspectsFlat(prospects) {
   // Rotate backup: keep last 3 copies
   const backupPath = PROSPECTS_PATH + '.bak';
   const backup2Path = PROSPECTS_PATH + '.bak2';
@@ -50,10 +128,15 @@ function saveProspects(prospects) {
     if (fs.existsSync(backupPath)) fs.renameSync(backupPath, backup2Path);
     if (fs.existsSync(PROSPECTS_PATH)) fs.copyFileSync(PROSPECTS_PATH, backupPath);
   } catch (_) {}
-  fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(prospects, null, 2));
-  // Push back to ZG (canonical source) so ZG->CT103 rsync does not clobber this write
-  try { execSync(`rsync -q ${PROSPECTS_PATH} kent@192.168.1.20:/home/kent/contexts/KG/prospects.json`); }
-  catch (_) {}
+  fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(nest(prospects), null, 2));
+}
+
+function loadProspects() {
+  return loadProspectsFlat();
+}
+
+function saveProspects(prospects) {
+  saveProspectsFlat(prospects);
 }
 
 function addOrUpdateProspect(lead) {
@@ -348,6 +431,7 @@ function findSiblingLocations(lead, prospects) {
 
 module.exports = {
   PROSPECTS_PATH, ROTATION_PATH, OUTPUT_DIR,
+  flatten, nest, loadProspectsFlat, saveProspectsFlat,
   loadProspects, saveProspects, addOrUpdateProspect, findProspectByEmail,
   loadRotation, setRotation,
   geoCheck,
