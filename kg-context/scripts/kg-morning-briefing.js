@@ -4,13 +4,13 @@ const fs = require('fs');
 const querystring = require('querystring');
 const TelegramBot = require('node-telegram-bot-api');
 const XLSX = require('/home/kent/contexts/KG/node_modules/xlsx');
+const { loadProspectsFlat } = require('../parsers/lib/shared');
 
 const bot = new TelegramBot(process.env.TELEGRAM_KG_BOT_TOKEN);
 const chatId = process.env.TELEGRAM_KG_CHAT_ID;
 const TOKEN_PATH = '/home/kent/.outlook-mcp-tokens.json';
 const HOME_ADDRESS = '1404 E 8th St, Hickman, NE 68372';
 const SALES_TRACKER = '/home/kent/contexts/KG/assets/Sales Tracker.xlsx';
-const PROSPECTS_JSON = '/home/kent/contexts/KG/prospects.json';
 const KG_PROJECT_ID = '6f4m82q2vvjQPV7X';
 
 // Spam senders/domains to ignore for inbox check
@@ -189,7 +189,7 @@ function parseSalesTracker(today) {
 }
 
 function parseProspectsJson(today) {
-  const data = JSON.parse(fs.readFileSync(PROSPECTS_JSON, 'utf8'));
+  const data = loadProspectsFlat();
   const active = [];
   for (const p of data) {
     const status = (p.status || '').toLowerCase();

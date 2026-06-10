@@ -8,12 +8,10 @@
 // Usage (pipeline review wrap-up):
 //   echo '[{"name":"El Tejano","status":"Closed Lost",...}]' | node kg-update-prospect.js
 
-const fs = require('fs');
-const path = require('path');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
+const { loadProspectsFlat, saveProspectsFlat } = require('../parsers/lib/shared');
 
-const PROSPECTS_PATH = path.join(__dirname, '..', 'prospects.json');
 const CC_SCRIPT = '/home/kent/scripts/kg-cc-inspection.js';
 
 async function main() {
@@ -40,7 +38,7 @@ async function main() {
     process.exit(1);
   }
 
-  const data = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+  const data = loadProspectsFlat();
   const now = new Date().toISOString();
   const results = [];
   const ccNames = [];
@@ -65,7 +63,7 @@ async function main() {
     if (fields.inspection_complete === true) ccNames.push(data[idx].name);
   }
 
-  fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(data, null, 2));
+  saveProspectsFlat(data);
 
   results.forEach(r => console.log(r));
   console.error(`\nkg-update-prospect: ${updates.length} updates attempted, ${results.filter(r => r.startsWith('UPDATED')).length} applied.`);
@@ -78,7 +76,7 @@ async function main() {
     try {
       const ccData = JSON.parse(cc.stdout.slice(cc.stdout.indexOf('\n{') + 1));
       if (!ccData.found) { console.log(`CC: ${ccData.reason || 'not found'}`); continue; }
-      const fresh = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+      const fresh = loadProspectsFlat();
       const i = fresh.findIndex(p =>
         (p.name || '').toLowerCase() === name.toLowerCase() ||
         (p.company || '').toLowerCase() === name.toLowerCase()
@@ -86,7 +84,7 @@ async function main() {
       if (i >= 0) {
         fresh[i].companycam_data = ccData;
         fresh[i].last_updated = new Date().toISOString();
-        fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(fresh, null, 2));
+        saveProspectsFlat(fresh);
         console.log(`CC data saved: ${ccData.project_name}`);
       }
     } catch (e) {

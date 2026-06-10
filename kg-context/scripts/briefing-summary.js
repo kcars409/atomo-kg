@@ -1,13 +1,10 @@
 'use strict';
-const fs = require('fs');
-const path = require('path');
+const { loadProspectsFlat } = require('../parsers/lib/shared');
 
-const PROSPECTS_PATH = path.join(__dirname, '../prospects.json');
 const CLOSED = ['Closed Won', 'Closed Lost'];
 
 function loadProspects() {
-  try { return JSON.parse(fs.readFileSync(PROSPECTS_PATH)); }
-  catch { return []; }
+  return loadProspectsFlat();
 }
 
 function getSummary() {

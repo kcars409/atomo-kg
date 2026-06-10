@@ -4,12 +4,12 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const { execSync } = require('child_process');
+const { loadProspectsFlat, saveProspectsFlat } = require('../kg-context/parsers/lib/shared');
 
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PROSPECTS_PATH = '/home/kent/contexts/KG/prospects.json';
 const ROTATION_PATH  = '/home/kent/contexts/KG/lead-rotation.json';
 const QUEUE_PATH     = '/home/kent/atomo-data/pipeline-queue.json';
 const SESSION_PATH   = '/home/kent/atomo-data/kg-review-session.json';
@@ -38,11 +38,11 @@ const ACTIVE_STATUSES = [
 ];
 
 function readProspects() {
-  return JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+  return loadProspectsFlat();
 }
 
 function writeProspects(data) {
-  fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(data, null, 2));
+  saveProspectsFlat(data);
 }
 
 function todayYmd() {

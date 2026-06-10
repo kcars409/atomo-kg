@@ -1,12 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const { spawnSync } = require('child_process');
+const { loadProspectsFlat, saveProspectsFlat } = require('../parsers/lib/shared');
 
 const app = express();
 const PORT = 3100;
-const PROSPECTS_PATH = path.join(__dirname, '..', 'prospects.json');
 const CC_SCRIPT = '/home/kent/scripts/kg-cc-inspection.js';
 
 app.use(cors());
@@ -15,19 +13,11 @@ app.use(express.json());
 const CLOSED_STATUSES = new Set(['closed won', 'closed lost']);
 
 function loadProspects() {
-  return JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+  return loadProspectsFlat();
 }
 
 function saveProspects(prospects) {
-  const bak = PROSPECTS_PATH + '.bak';
-  const bak2 = PROSPECTS_PATH + '.bak2';
-  const bak3 = PROSPECTS_PATH + '.bak3';
-  try {
-    if (fs.existsSync(bak2)) fs.renameSync(bak2, bak3);
-    if (fs.existsSync(bak)) fs.renameSync(bak, bak2);
-    if (fs.existsSync(PROSPECTS_PATH)) fs.copyFileSync(PROSPECTS_PATH, bak);
-  } catch (_) {}
-  fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(prospects, null, 2));
+  saveProspectsFlat(prospects);
 }
 
 // GET /api/prospects

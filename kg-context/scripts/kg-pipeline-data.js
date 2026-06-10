@@ -3,10 +3,7 @@
 // Strips Not Contacted, Closed Won/Lost, Dormant — and trims each record
 // to only the fields needed for the review card.
 
-const fs = require("fs");
-const path = require("path");
-
-const PROSPECTS_PATH = path.join(__dirname, "..", "prospects.json");
+const { loadProspectsFlat } = require("../parsers/lib/shared");
 
 const ACTIVE_STATUSES = new Set([
   "New Lead",
@@ -21,7 +18,7 @@ const ACTIVE_STATUSES = new Set([
   "In 14-Day",
 ]);
 
-const data = JSON.parse(fs.readFileSync(PROSPECTS_PATH, "utf8"));
+const data = loadProspectsFlat();
 
 function getLastNote(p) {
   // Combine all three note fields, newest appended content last

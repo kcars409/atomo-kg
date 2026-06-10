@@ -1,11 +1,11 @@
 require('dotenv').config({ path: '/home/kent/.env-atomo' });
 const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
+const { loadProspectsFlat } = require('../parsers/lib/shared');
 
 const bot = new TelegramBot(process.env.TELEGRAM_KG_BOT_TOKEN);
 const chatId = process.env.TELEGRAM_KG_CHAT_ID;
 
-const PROSPECTS_PATH   = '/home/kent/contexts/KG/prospects.json';
 const CARDS_PATH       = '/home/kent/atomo-data/kg-review-cards.json';
 const BUMPED_PATH      = '/home/kent/temp/kg-bumped-today.json';
 
@@ -26,7 +26,7 @@ async function sendEod() {
 
   let message = `🌆 *KG End of Day*\n📅 ${dayName}, ${dateStr}\n\n`;
 
-  const prospects = loadJson(PROSPECTS_PATH, []);
+  const prospects = loadProspectsFlat();
   const bumped    = loadJson(BUMPED_PATH, []);
   const cardsData = loadJson(CARDS_PATH, { cards: [] });
   const cards     = cardsData.cards || [];

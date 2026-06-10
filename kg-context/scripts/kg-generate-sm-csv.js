@@ -5,8 +5,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadProspectsFlat, saveProspectsFlat } = require('../parsers/lib/shared');
 
-const PROSPECTS_PATH = '/home/kent/contexts/KG/prospects.json';
 const TEMP_DIR = '/home/kent/temp';
 const TODAY = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 
@@ -112,7 +112,7 @@ function generateCsv(prospects) {
 }
 
 function run() {
-  const all = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+  const all = loadProspectsFlat();
 
   const pending = all.filter(p =>
     ['Inspection Scheduled', 'Inspection Complete'].includes(p.status) &&
@@ -139,7 +139,7 @@ function run() {
     console.log(`  Generated: ${filename}`);
   }
 
-  fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(all, null, 2));
+  saveProspectsFlat(all);
   return generated;
 }
 

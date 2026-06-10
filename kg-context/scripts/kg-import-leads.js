@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const readline = require('readline');
+const { loadProspectsFlat, saveProspectsFlat } = require('../parsers/lib/shared');
 
 const IMPORT_DIR = '/home/kent/contexts/KG/import/extracted/Commercial Kitchen Data';
 const RAR_DIR = path.join(IMPORT_DIR, 'Restaurant Activity Report - New Leads Data Pulls');
@@ -250,7 +251,7 @@ async function main() {
   console.log('\nKG Lead Importer\n');
 
   // Load existing prospects
-  const existing = JSON.parse(fs.readFileSync(PROSPECTS_PATH, 'utf8'));
+  const existing = loadProspectsFlat();
   console.log(`Existing prospects: ${existing.length}`);
 
   // Parse all sources
@@ -301,7 +302,7 @@ async function main() {
 
     // Write
     const merged = [...existing, ...added];
-    fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(merged, null, 2));
+    saveProspectsFlat(merged);
     console.log(`\nWrote ${merged.length} prospects to ${PROSPECTS_PATH}`);
 
     // Delete staging
