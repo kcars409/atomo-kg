@@ -49,13 +49,15 @@ function csvEscape(val) {
   return s;
 }
 
-function prospectToSmRow(p) {
+function prospectToSmRow(p, companyCounts) {
   const row = {};
   SM_COLUMNS.forEach(col => { row[col] = ''; });
 
   row['Name']                        = p.name || p.company || '';
   row['Title']                       = p.title || '';
-  row['Company']                     = p.company || '';
+  // SM convention: leave Company blank for single-location contacts; only
+  // populate it for contacts that are part of a multi-location company.
+  row['Company']                     = (companyCounts.get(p.company_id) || 0) > 1 ? (p.company || '') : '';
   row['Email']                       = p.email || '';
   row['Phone']                       = p.phone || '';
   row['Address1']                    = p.address1 || '';
@@ -97,10 +99,10 @@ function prospectToSmRow(p) {
   return row;
 }
 
-function generateCsv(prospects) {
+function generateCsv(prospects, companyCounts) {
   const header = SM_COLUMNS.map(csvEscape).join(',');
   const rows = prospects.map(p => {
-    const row = prospectToSmRow(p);
+    const row = prospectToSmRow(p, companyCounts);
     return SM_COLUMNS.map(col => csvEscape(row[col])).join(',');
   });
   return [header, ...rows].join('\n');
@@ -108,6 +110,11 @@ function generateCsv(prospects) {
 
 function run() {
   const all = loadProspectsFlat();
+
+  const companyCounts = new Map();
+  for (const p of all) {
+    companyCounts.set(p.company_id, (companyCounts.get(p.company_id) || 0) + 1);
+  }
 
   const pending = all.filter(p =>
     ['Inspection Scheduled', 'Inspection Complete'].includes(p.status) &&
@@ -121,7 +128,7 @@ function run() {
 
   const filename = `sm_import_${TODAY}.csv`;
   const outPath = path.join(TEMP_DIR, filename);
-  fs.writeFileSync(outPath, generateCsv(pending));
+  fs.writeFileSync(outPath, generateCsv(pending, companyCounts));
 
   const generated = pending.map(p => {
     p.sm_csv_generated = true;
