@@ -124,7 +124,7 @@ MEETING FOLLOW-UP - [Company Name]
 
 **Inspection:**
 - Ask: "Did it complete? (y / noshow / no)"
-- `y` → "Notes?" → buffer: status=Inspection Complete, inspection_complete=true, append to atomo_notes, set `inspection_meeting.completed_at`=now, `inspection_meeting.outcome`="completed"
+- `y` → "Notes?" → buffer: status=Inspection Complete, inspection_complete=true, append to atomo_notes, set `inspection_meeting.completed_at`=now, `inspection_meeting.outcome`="completed". ST queue change: set `inspection_date` to the date portion of `inspection_meeting.datetime` (do not also write this date into the ST `notes` field)
   - **CSS note prompt (only if `lead_source === 'CSS'`):** "CSS note for this inspection? (type it or 'skip')"
     - Write changes first, then call:
       ```bash
@@ -142,6 +142,8 @@ MEETING FOLLOW-UP - [Company Name]
 - `signed` → "Notes?" → buffer: status=Closed Won, append to atomo_notes, set completed_at/outcome="signed" → hand off to /close-won
 - `followup` → "Notes? Next step + date?" → buffer: append notes, set next step, set completed_at/outcome="follow-up"
 - `lost` → "Reason?" → buffer: status=Closed Lost, append to atomo_notes, set completed_at/outcome="lost"
+
+In all three cases, the proposal was delivered at this meeting — ST queue change: set `proposal_delivered_date` to the date portion of `proposal_meeting.datetime` (do not also write this date into the ST `notes` field).
 
 Write follow-up changes immediately:
 ```
@@ -236,6 +238,7 @@ prospects.json is already up to date — each card was written immediately durin
 ```json
 { "changes": [{ "prospect": "Name", "next_step": "...", "next_step_date": "YYYY-MM-DD", "status": "...", "notes": "..." }] }
 ```
+- If an inspection or proposal meeting was completed this session, include `"inspection_date"` and/or `"proposal_delivered_date"` (ISO or m/d) — see Meeting Follow-up Response Logic. writeback.py writes these to the dedicated ST "Inspection date" / "Proposal delivered date" columns as m/d. Do not duplicate these dates inside `notes`.
 
 **Print summary:**
 ```
@@ -262,4 +265,5 @@ Sync to SharePoint now? (yes/no)
 - If Kent asks about a prospect not in the current card, answer briefly and return to the loop
 - **No Todoist.** Not part of this workflow.
 - **Gold rows = 3+ locations.** Pass `"num_locations": N` in the update; writeback.py applies gold fill (`FFC000`) automatically.
+- **Inspection/proposal dates go in their own ST columns, never in `notes`.** Use `inspection_date` / `proposal_delivered_date` fields (see Step 3).
 - **Sparse cell bug is fixed.** fetch.py uses cell coordinates — do not revert to sequential append.
