@@ -10,7 +10,15 @@
 
 const readline = require('readline');
 const { spawnSync } = require('child_process');
-const { loadProspectsFlat, saveProspectsFlat } = require('../parsers/lib/shared');
+const { loadProspectsFlat, saveProspectsFlat, queueStatusUpdate } = require('../parsers/lib/shared');
+
+// prospects.json statuses that should also close out the Sales Tracker row.
+// 'cold' maps to 'Closed Lost' per the existing convention (e.g. Maple Crest).
+const ST_STATUS_MAP = {
+  'cold': 'Closed Lost',
+  'closed lost': 'Closed Lost',
+  'closed won': 'Closed Won',
+};
 
 const CC_SCRIPT = '/home/kent/scripts/kg-cc-inspection.js';
 
@@ -59,6 +67,12 @@ async function main() {
 
     Object.assign(data[idx], fields, { last_updated: now });
     results.push(`UPDATED: ${data[idx].name}`);
+
+    const stStatus = ST_STATUS_MAP[(fields.status || '').toLowerCase()];
+    if (stStatus) {
+      queueStatusUpdate(data[idx].name, stStatus);
+      results.push(`QUEUED: ${data[idx].name} -> Sales Tracker "${stStatus}"`);
+    }
 
     if (fields.inspection_complete === true) ccNames.push(data[idx].name);
   }

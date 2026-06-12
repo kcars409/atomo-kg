@@ -403,6 +403,23 @@ function queueToSalesTracker(lead) {
   fs.writeFileSync(QUEUE_PATH, JSON.stringify(queue, null, 2));
 }
 
+// Queues a status-only Sales Tracker update for an existing row (e.g. closing
+// a prospect as Cold / Closed Lost / Closed Won from /execute). new_row is
+// false so pipeline-writeback.py skips it (reports "skipped") rather than
+// creating a sparse ghost row if the name isn't found in the sheet.
+function queueStatusUpdate(prospectName, status) {
+  let queue = [];
+  try { queue = JSON.parse(fs.readFileSync(QUEUE_PATH, "utf8")); if (!Array.isArray(queue)) queue = []; }
+  catch (_) {}
+  queue.push({
+    prospect: prospectName,
+    status,
+    new_row: false,
+    timestamp: new Date().toISOString(),
+  });
+  fs.writeFileSync(QUEUE_PATH, JSON.stringify(queue, null, 2));
+}
+
 // ── Company de-dup helpers ────────────────────────────────────────────────────
 
 function normalizeCompany(str) {
@@ -439,6 +456,6 @@ module.exports = {
   generateSmCsv,
   decodeQuotedPrintable, getMimePart,
   formatPhone, companyFromDomain, todayYmd,
-  queueToSalesTracker,
+  queueToSalesTracker, queueStatusUpdate,
   normalizeCompany, normalizeAddress, findSiblingLocations,
 };
