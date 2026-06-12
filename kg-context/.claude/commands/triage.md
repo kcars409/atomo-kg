@@ -28,6 +28,12 @@ Filter to: `next_step_date <= today` AND `name not in done_today`.
 
 If any were excluded, print: `({N} already marked done in triage today, skipped)`
 
+Capture the start timestamp:
+```bash
+date +%s
+```
+Store result as `start_epoch`.
+
 Print:
 ```
 TRIAGE - {date} | {N} cards | clock is running
@@ -118,12 +124,19 @@ Write `~/atomo-data/kg-triage-{date}.json`:
 
 Skip items where action = `skip`.
 
+Compute elapsed time:
+```bash
+date +%s
+```
+Subtract `start_epoch` from this result, format as `Mm Ss`.
+
 Print:
 ```
 ──────────────────────────────
 TRIAGE COMPLETE
 {N} items queued for /execute
   {n} calls   {n} emails   {n} teams   {n} day14   {n} close   {n} bumps
+Elapsed: {Mm Ss}
 Run /execute when ready.
 ──────────────────────────────
 ```
