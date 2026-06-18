@@ -118,7 +118,52 @@ function loadProspectsFlat() {
   return flatten(raw);
 }
 
-function saveProspectsFlat(prospects) {
+const FIREFIGHTING_LOG_PATH = path.join(require('os').homedir(), 'temp', 'firefighting-log.jsonl');
+
+// M2 metric: zero firefighting incidents per review week. Logs even
+// prevented incidents (e.g. the count-drop guard catching a bad write) so
+// near-misses are visible, not just actual data loss. Mirrors
+// log_firefighting_incident() in prospects_store.py.
+// Includes caller identity (script + pid + parent process) so a blocked
+// write can be traced immediately instead of reconstructed after the fact.
+function logFirefightingIncident(description) {
+  try {
+    const caller = {
+      script: process.argv[1] || null,
+      argv: process.argv.slice(2),
+      pid: process.pid,
+      ppid: process.ppid,
+    };
+    try {
+      caller.parent_comm = fs.readFileSync(`/proc/${process.ppid}/comm`, 'utf8').trim();
+      caller.parent_cmdline = fs.readFileSync(`/proc/${process.ppid}/cmdline`, 'utf8').replace(/\0/g, ' ').trim();
+    } catch (_) {}
+    fs.appendFileSync(FIREFIGHTING_LOG_PATH, JSON.stringify({
+      at: new Date().toISOString(),
+      description,
+      caller,
+    }) + '\n');
+  } catch (_) {}
+}
+
+class ProspectCountDropError extends Error {}
+
+function saveProspectsFlat(prospects, { allowShrink = false, maxDropPct = 5 } = {}) {
+  if (!allowShrink && fs.existsSync(PROSPECTS_PATH)) {
+    const before = loadProspectsFlat().length;
+    const after = prospects.length;
+    if (before > 0 && after < before * (1 - maxDropPct / 100)) {
+      const pct = (100 * (before - after) / before).toFixed(1);
+      logFirefightingIncident(
+        `saveProspectsFlat blocked a write: ${after} records over ${before} on disk (${pct}% drop)`
+      );
+      throw new ProspectCountDropError(
+        `saveProspectsFlat: refusing to write ${after} records over ${before} on disk ` +
+        `(a ${pct}% drop). Pass { allowShrink: true } if this is an intentional merge/dedup.`
+      );
+    }
+  }
+
   // Rotate backup: keep last 3 copies
   const backupPath = PROSPECTS_PATH + '.bak';
   const backup2Path = PROSPECTS_PATH + '.bak2';
@@ -131,6 +176,7 @@ function saveProspectsFlat(prospects) {
   fs.writeFileSync(PROSPECTS_PATH, JSON.stringify(nest(prospects), null, 2));
 }
 
+
 function loadProspects() {
   return loadProspectsFlat();
 }
@@ -141,8 +187,27 @@ function saveProspects(prospects) {
 
 function addOrUpdateProspect(lead) {
   const prospects = loadProspects();
-  const key = (lead.email || '').toLowerCase();
-  const idx = key ? prospects.findIndex(p => (p.email || '').toLowerCase() === key) : -1;
+  const emailKey = (lead.email || '').toLowerCase();
+  const companyKey = normalizeCompany(lead.company || lead.name);
+
+  // Match by company_id first (most authoritative -- set when updating a
+  // known record). Then by email, but ONLY when the company name also
+  // matches: CSS intake substitutes a sales rep's email as a placeholder
+  // whenever the real client declines to share theirs, and two unrelated
+  // companies sharing that same placeholder must never get merged into one
+  // record (this silently destroyed Margaritas Kearney's data on
+  // 2026-06-16 when Huddle House reused the same placeholder email).
+  // Finally fall back to company name alone.
+  let idx = -1;
+  if (lead.company_id) {
+    idx = prospects.findIndex(p => p.company_id === lead.company_id);
+  }
+  if (idx < 0 && emailKey && companyKey) {
+    idx = prospects.findIndex(p => (p.email || '').toLowerCase() === emailKey && normalizeCompany(p.company || p.name) === companyKey);
+  }
+  if (idx < 0 && companyKey) {
+    idx = prospects.findIndex(p => normalizeCompany(p.company || p.name) === companyKey);
+  }
   const today = new Date().toISOString().slice(0, 10);
   const record = {
     status: 'New Lead',
@@ -431,7 +496,7 @@ function findSiblingLocations(lead, prospects) {
 
 module.exports = {
   PROSPECTS_PATH, ROTATION_PATH, OUTPUT_DIR,
-  flatten, nest, loadProspectsFlat, saveProspectsFlat,
+  flatten, nest, loadProspectsFlat, saveProspectsFlat, ProspectCountDropError,
   loadProspects, saveProspects, addOrUpdateProspect, findProspectByEmail,
   loadRotation, setRotation,
   geoCheck,
