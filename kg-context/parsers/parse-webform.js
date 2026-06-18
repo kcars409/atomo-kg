@@ -144,12 +144,21 @@ async function parse(emlPath, opts = {}) {
     return { lead, geo, missing };
   }
 
+  // Write the lead before waiting on Telegram — a timeout/crash on the
+  // rotation question must never drop a lead. assigned_to/owner get filled
+  // in below once (if) we get an answer; this record is the safety net.
+  lead.status = 'Not Contacted';
+  lead.assigned_to = null;
+  lead.owner = '';
+  addOrUpdateProspect(lead);
+
   // Telegram round-robin
   await sendKgTelegram(tgMsg);
   let answer;
   try { answer = await waitForYesNo(); }
   catch (e) {
     console.error('Telegram timeout:', e.message);
+    console.error('Lead already written to prospects.json as unassigned — not lost, just needs manual rotation.');
     process.exit(1);
   }
 
@@ -162,7 +171,7 @@ async function parse(emlPath, opts = {}) {
   // Flip rotation: Yes → next=Vincent, No → next=Kent
   setRotation(isKent ? 'Vincent' : 'Kent');
 
-  // Write to prospects.json regardless of owner
+  // Update the record written above with the rotation decision
   addOrUpdateProspect(lead);
 
   if (isKent) {
